@@ -5,16 +5,19 @@ on: [workflow_dispatch]
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
-      - name: Download and Extract ngrok
+      - name: Download ngrok
         shell: pwsh
         run: |
           Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
-          Expand-Archive ngrok.zip -DestinationPath $PWD
-          Get-ChildItem -Recurse
+          Expand-Archive ngrok.zip -DestinationPath $Env:GITHUB_WORKSPACE
+          Write-Host "Ngrok extracted to $Env:GITHUB_WORKSPACE"
+          Get-ChildItem $Env:GITHUB_WORKSPACE
 
-      - name: Add ngrok authtoken
+      - name: Set ngrok authtoken
         shell: pwsh
+        working-directory: ${{ github.workspace }}
         run: |
           .\ngrok.exe authtoken YOUR_AUTH_TOKEN
 
@@ -28,4 +31,6 @@ jobs:
 
       - name: Start ngrok tunnel
         shell: pwsh
-        run: Start-Process -FilePath ".\ngrok.exe" -ArgumentList "tcp 3389"
+        working-directory: ${{ github.workspace }}
+        run: |
+          Start-Process -NoNewWindow -FilePath .\ngrok.exe -ArgumentList "tcp 3389"
