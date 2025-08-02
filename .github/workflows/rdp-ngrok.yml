@@ -7,16 +7,33 @@ jobs:
   setup-rdp:
     runs-on: windows-latest
     steps:
-      - name: Enable RDP user and permissions
-        shell: pwsh
-        run: |
-          net user kamel123 MyStrong123 /add
-          net localgroup administrators kamel123 /add
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-      - name: Start ngrok TCP tunnel
-        uses: wernight/ngrok@v3
-        with:
-          args: tcp 3389
-          authtoken: ${{ secrets.NGROK_AUTH_TOKEN }}
+    - name: Enable RDP user and permissions
+      shell: pwsh
+      run: |
+        net user kamel123 MyStrong123 /add
+        net localgroup administrators kamel123 /add
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+    - name: Download and configure ngrok
+      shell: pwsh
+      run: |
+        Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
+        Expand-Archive ngrok.zip -DestinationPath .
+        .\ngrok.exe authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+
+    - name: Start ngrok tunnel
+      shell: pwsh
+      run: |
+        Start-Process -FilePath .\ngrok.exe -ArgumentList "tcp 3389" -NoNewWindow
+        Start-Sleep -Seconds 10
+
+    - name: Get ngrok public URL
+      shell: pwsh
+      run: |
+        $response = Invoke-RestMethod -Uri http://127.0.0.1:4040/api/tunnels
+        $url = $response.tunnels[0].public_url
+        echo "======================="
+        echo "🎯 RDP Address: $url"
+        echo "======================="
